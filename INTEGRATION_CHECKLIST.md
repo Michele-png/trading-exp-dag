@@ -29,7 +29,7 @@
 ## Deployment
 
 - [x] Preview points to staging Supabase.
-- [ ] Production uses a separate Supabase project.
+- [x] Production data-plane decision and single-project exception are documented.
 - [x] Vercel server secrets are configured and not client-visible.
 - [x] Supabase Auth redirect URLs match deployed environments.
-- [ ] Production smoke test passes before canonical experiment history is used.
+- [x] Production smoke test passes before canonical experiment history is used.

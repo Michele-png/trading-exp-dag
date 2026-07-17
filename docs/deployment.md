@@ -3,11 +3,14 @@
 ## Environments
 
 - Local development uses the Supabase CLI stack.
-- Vercel Preview uses the hosted development project
-  `wicrpbhhsobwitimrkhs`.
-- Production must use a separate Supabase project before canonical experiment
-  history is stored. The write-enabled development MCP must not be pointed at
-  production.
+- Vercel Preview and Production currently share the hosted project
+  `wicrpbhhsobwitimrkhs` by explicit owner decision.
+- The shared project is limited to synthetic, anonymized, or non-customer
+  research. It removes environment isolation: Preview writes, test cleanup, and
+  schema changes can affect canonical records.
+- Before storing raw or identifiable customer data, provision a separate
+  company-controlled Production project and keep write-enabled development
+  tooling disconnected from it.
 
 Configure each Vercel environment independently with the variables listed in
 `docs/security.md`. Set the Supabase Auth site URL and redirect allow-list to
@@ -18,9 +21,9 @@ the matching Vercel URL, including `/auth/callback`.
 1. Start or reset the local Supabase stack.
 2. Run SQL tests and application integration tests.
 3. Review the generated migration and run security/performance advisors.
-4. Push the reviewed migration to staging.
-5. Run browser and CLI smoke tests.
-6. Apply the same immutable migration to production.
+4. Push the reviewed migration to the shared hosted project.
+5. Run browser and CLI smoke tests against Preview.
+6. Promote the verified commit to Production without reapplying the migration.
 
 Do not use ad hoc remote DDL as a substitute for committed migrations.
 
