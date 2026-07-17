@@ -39,7 +39,12 @@ function parseEnvironment<T>(
  * Keeping validation out of module scope lets `next build` run without secrets.
  */
 export function getPublicEnvironment(
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: Record<string, string | undefined> = {
+    // Direct references let Next.js inline public values in client bundles.
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  },
 ): PublicEnvironment {
   return parseEnvironment(
     publicEnvironmentSchema,
