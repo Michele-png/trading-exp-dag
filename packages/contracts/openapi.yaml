@@ -1,0 +1,1528 @@
+openapi: 3.1.0
+info:
+  title: QDAG REST API
+  version: 1.0.0
+  description: |
+    Private, workspace-scoped experiment provenance API. Browser callers use a
+    Supabase user JWT and Row Level Security. CLI callers use a revocable QDAG
+    personal token. Mutation responses are replayable by Idempotency-Key.
+servers:
+  - url: /api/v1
+security:
+  - SupabaseJWT: []
+  - PersonalToken: []
+tags:
+  - name: Tokens
+  - name: Spaces
+  - name: Nodes
+  - name: Links
+  - name: Runs
+  - name: Artifacts
+  - name: Portability
+paths:
+  /auth/status:
+    get:
+      tags: [Tokens]
+      operationId: getAuthStatus
+      summary: Verify a CLI personal token and return its actor scope
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/tokens:
+    get:
+      tags: [Tokens]
+      operationId: listTokens
+      summary: List personal tokens for the current user
+      description: Requires a Supabase user session; personal tokens cannot enumerate tokens.
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Tokens]
+      operationId: createToken
+      summary: Create a personal token
+      description: The raw token is returned once and only a keyed digest is persisted.
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateToken"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /auth/tokens/{tokenId}:
+    delete:
+      tags: [Tokens]
+      operationId: revokeToken
+      summary: Revoke a personal token
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/TokenId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceBody"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /spaces:
+    get:
+      tags: [Spaces]
+      operationId: listSpaces
+      summary: List accessible experiment spaces
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    post:
+      tags: [Spaces]
+      operationId: createSpace
+      summary: Create a space and its objective root
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSpaceRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /spaces/{spaceId}:
+    get:
+      tags: [Spaces]
+      operationId: getSpace
+      summary: Read a space
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/SpaceId"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Spaces]
+      operationId: updateSpace
+      summary: Update space metadata
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SpaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSpace"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /nodes:
+    post:
+      tags: [Nodes]
+      operationId: createNode
+      summary: Create a draft experiment or synthesis node
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNode"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /experiments:
+    post:
+      tags: [Nodes]
+      operationId: createExperiment
+      summary: Create a draft experiment using the CLI contract
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExperiment"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /experiments/{nodeId}:
+    get:
+      tags: [Nodes]
+      operationId: getExperiment
+      summary: Read an experiment and its current revision
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/NodeId"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /experiments/{nodeId}/finalize:
+    post:
+      tags: [Nodes]
+      operationId: finalizeExperiment
+      summary: Finalize an experiment with a scientific conclusion
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/NodeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizeExperiment"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /nodes/{nodeId}:
+    get:
+      tags: [Nodes]
+      operationId: getNode
+      summary: Read a node and its revisions, runs, metrics, evidence, and links
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/NodeId"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Nodes]
+      operationId: updateNodeState
+      summary: Update operational or conclusion state
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/NodeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNode"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Nodes]
+      operationId: deleteDraftNode
+      summary: Delete an unfinalized draft
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/NodeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceBody"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /nodes/{nodeId}/revisions:
+    get:
+      tags: [Nodes]
+      operationId: listNodeRevisions
+      summary: List immutable node revisions
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/NodeId"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    post:
+      tags: [Nodes]
+      operationId: appendNodeRevision
+      summary: Append a draft or editorial correction revision
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/NodeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRevision"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /nodes/{nodeId}/finalize:
+    post:
+      tags: [Nodes]
+      operationId: finalizeNode
+      summary: Freeze the current revision
+      description: The node must be reachable from the space objective and contain required scientific fields.
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/NodeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizeNode"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /nodes/{nodeId}/archive:
+    post:
+      tags: [Nodes]
+      operationId: archiveNode
+      summary: Archive a finalized node
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/NodeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArchiveNode"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /lineage-edges:
+    get:
+      tags: [Links]
+      operationId: listLineageEdges
+      summary: List ancestry edges
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/OptionalSpaceQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    post:
+      tags: [Links]
+      operationId: createLineageEdge
+      summary: Add an acyclic lineage edge to a draft
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LineageEdge"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Links]
+      operationId: deleteLineageEdge
+      summary: Remove a lineage edge from a draft
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteLineageEdge"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /lineage-links:
+    get:
+      tags: [Links]
+      operationId: listLineageLinks
+      summary: List lineage links using the CLI path
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/OptionalSpaceQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    post:
+      tags: [Links]
+      operationId: createLineageLink
+      summary: Create a typed acyclic lineage link
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLineageLink"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Links]
+      operationId: deleteLineageLink
+      summary: Remove a lineage edge from a draft
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteLineageEdge"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /semantic-links:
+    get:
+      tags: [Links]
+      operationId: listSemanticLinks
+      summary: List support, contradiction, and replication links
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/OptionalSpaceQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    post:
+      tags: [Links]
+      operationId: createSemanticLink
+      summary: Add a typed semantic link
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSemanticLinkRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+    delete:
+      tags: [Links]
+      operationId: deleteSemanticLink
+      summary: Delete a semantic link
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteSemanticLink"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /runs:
+    get:
+      tags: [Runs]
+      operationId: listRuns
+      summary: List run states for polling
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - name: node_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    post:
+      tags: [Runs]
+      operationId: createRun
+      summary: Record the start of a local CLI run
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRun"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+  /runs/start:
+    post:
+      tags: [Runs]
+      operationId: startRun
+      summary: Record the start of a local run
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRun"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+  /runs/{runId}/complete:
+    post:
+      tags: [Runs]
+      operationId: completeRun
+      summary: Complete a run and persist its metrics
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteRunRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /runs/{runId}/fail:
+    post:
+      tags: [Runs]
+      operationId: failRun
+      summary: Mark a run failed
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FailRunRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /artifacts/upload:
+    post:
+      tags: [Artifacts]
+      operationId: prepareArtifactUpload
+      summary: Validate metadata and create a signed private upload
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepareArtifact"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /artifacts/prepare:
+    post:
+      tags: [Artifacts]
+      operationId: prepareCliArtifactUpload
+      summary: Prepare a signed private upload for CLI evidence
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepareCliArtifact"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /artifacts/{artifactId}/finalize:
+    post:
+      tags: [Artifacts]
+      operationId: finalizeArtifact
+      summary: Verify uploaded bytes, MIME type, size, and SHA-256
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ArtifactId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizeArtifactRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /search:
+    get:
+      tags: [Nodes]
+      operationId: searchNodes
+      summary: Search current node content and filter states
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+        - $ref: "#/components/parameters/OptionalSpaceQuery"
+        - name: operationalState
+          in: query
+          schema:
+            $ref: "#/components/schemas/OperationalState"
+        - name: conclusionState
+          in: query
+          schema:
+            $ref: "#/components/schemas/ConclusionState"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /export:
+    get:
+      tags: [Portability]
+      operationId: exportWorkspace
+      summary: Export a checksummed versioned backup bundle
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/OptionalSpaceQuery"
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, markdown]
+            default: json
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /imports/restore:
+    post:
+      tags: [Portability]
+      operationId: restoreWorkspace
+      summary: Validate or restore a checksummed backup
+      description: Artifact paths are checked for traversal and workspace escape before any insert.
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestoreBundle"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /backups/export:
+    get:
+      tags: [Portability]
+      operationId: exportBackup
+      summary: Export records, Markdown, and optional signed artifacts
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - name: include_artifacts
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /backups/restore:
+    post:
+      tags: [Portability]
+      operationId: restoreBackup
+      summary: Validate paths and restore an authenticated CLI backup
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestoreCliBackup"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+components:
+  securitySchemes:
+    SupabaseJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase user access token. Browser cookie sessions are also accepted.
+    PersonalToken:
+      type: http
+      scheme: bearer
+      bearerFormat: QDAG
+      description: Revocable token beginning with qdag_ and scoped to one workspace.
+  parameters:
+    WorkspaceId:
+      name: X-Workspace-Id
+      in: header
+      required: false
+      description: Required for browser JWT requests; personal tokens embed their workspace scope.
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+        pattern: "^[A-Za-z0-9._:-]+$"
+    SpaceId:
+      name: spaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NodeId:
+      name: nodeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ArtifactId:
+      name: artifactId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TokenId:
+      name: tokenId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OptionalSpaceQuery:
+      name: space_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Success:
+      description: Successful response
+      headers:
+        X-Request-Id:
+          schema:
+            type: string
+            format: uuid
+        Idempotency-Replayed:
+          schema:
+            type: string
+            enum: ["true"]
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SuccessEnvelope"
+    Created:
+      description: Resource created
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SuccessEnvelope"
+    Unauthorized:
+      description: Missing, invalid, expired, or revoked credential
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Forbidden:
+      description: Credential lacks workspace membership or token scope
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Resource not found in the authenticated workspace
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Conflict:
+      description: Lifecycle, graph, state, or idempotency conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ValidationError:
+      description: Zod validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data: {}
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            requestId:
+              type: string
+              format: uuid
+            details: {}
+    WorkspaceBody:
+      type: object
+      required: [workspaceId]
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+    NodeKind:
+      type: string
+      enum: [objective, experiment, synthesis]
+    OperationalState:
+      type: string
+      enum: [draft, planned, ready, running, completed, failed, cancelled, archived]
+    ConclusionState:
+      type: string
+      enum: [pending, supported, refuted, mixed, inconclusive]
+    PreregistrationState:
+      type: string
+      enum: [preregistered, retrospective, unspecified]
+    RevisionContent:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 240
+        hypothesis:
+          type: [string, "null"]
+          maxLength: 20000
+        method:
+          type: [string, "null"]
+          maxLength: 20000
+        successCriteria:
+          type: [string, "null"]
+          maxLength: 20000
+        preregistrationState:
+          $ref: "#/components/schemas/PreregistrationState"
+        conclusion:
+          type: [string, "null"]
+          maxLength: 20000
+        notes:
+          type: [string, "null"]
+          maxLength: 20000
+    CreateToken:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [name, scopes]
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 80
+            scopes:
+              type: array
+              minItems: 1
+              items:
+                type: string
+                enum:
+                  - spaces:read
+                  - spaces:write
+                  - nodes:read
+                  - nodes:write
+                  - runs:write
+                  - artifacts:write
+                  - export:read
+                  - import:write
+            expiresAt:
+              type: [string, "null"]
+              format: date-time
+    CreateSpace:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [name, slug, objective]
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 120
+            slug:
+              type: string
+              pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            objective:
+              $ref: "#/components/schemas/RevisionContent"
+    CreateSpaceRequest:
+      oneOf:
+        - $ref: "#/components/schemas/CreateSpace"
+        - type: object
+          required: [name, objective]
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 120
+            objective:
+              type: string
+              minLength: 1
+    UpdateSpace:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          properties:
+            name:
+              type: string
+            description:
+              type: [string, "null"]
+            archived:
+              type: boolean
+    CreateNode:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [spaceId, kind, revision]
+          properties:
+            spaceId:
+              type: string
+              format: uuid
+            kind:
+              type: string
+              enum: [experiment, synthesis]
+            revision:
+              $ref: "#/components/schemas/RevisionContent"
+            lineageParentIds:
+              type: array
+              maxItems: 20
+              items:
+                type: string
+                format: uuid
+    CreateExperiment:
+      type: object
+      required: [space_id, title, hypothesis]
+      properties:
+        space_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 240
+        hypothesis:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        method:
+          type: [string, "null"]
+          maxLength: 20000
+        success_criteria:
+          type: [string, "null"]
+          maxLength: 20000
+        retrospective:
+          type: boolean
+          default: false
+    UpdateNode:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          properties:
+            operationalState:
+              $ref: "#/components/schemas/OperationalState"
+            conclusionState:
+              $ref: "#/components/schemas/ConclusionState"
+    CreateRevision:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [content]
+          properties:
+            content:
+              $ref: "#/components/schemas/RevisionContent"
+            editorial:
+              type: boolean
+              default: false
+            correctionReason:
+              type: string
+              maxLength: 1000
+    FinalizeNode:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          properties:
+            revisionId:
+              type: string
+              format: uuid
+            conclusionState:
+              $ref: "#/components/schemas/ConclusionState"
+    FinalizeExperiment:
+      type: object
+      required: [conclusion]
+      properties:
+        conclusion:
+          type: object
+          required: [state, summary]
+          properties:
+            state:
+              type: string
+              enum: [supported, refuted, mixed, inconclusive]
+            summary:
+              type: string
+              minLength: 1
+            limitations:
+              type: array
+              items:
+                type: string
+    ArchiveNode:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [reason]
+          properties:
+            reason:
+              type: string
+              minLength: 1
+              maxLength: 1000
+    LineageEdge:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [spaceId, parentNodeId, childNodeId]
+          properties:
+            spaceId:
+              type: string
+              format: uuid
+            parentNodeId:
+              type: string
+              format: uuid
+            childNodeId:
+              type: string
+              format: uuid
+    CreateLineageLink:
+      type: object
+      required: [parent_experiment_id, child_experiment_id, type]
+      properties:
+        parent_experiment_id:
+          type: string
+          format: uuid
+        child_experiment_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [derived_from, synthesizes]
+    DeleteLineageEdge:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [edgeId]
+          properties:
+            edgeId:
+              type: string
+              format: uuid
+    SemanticLink:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [spaceId, sourceNodeId, targetNodeId, linkType]
+          properties:
+            spaceId:
+              type: string
+              format: uuid
+            sourceNodeId:
+              type: string
+              format: uuid
+            targetNodeId:
+              type: string
+              format: uuid
+            linkType:
+              type: string
+              enum: [supports, contradicts, replicates]
+            rationale:
+              type: [string, "null"]
+              maxLength: 2000
+    CreateSemanticLinkRequest:
+      oneOf:
+        - $ref: "#/components/schemas/SemanticLink"
+        - type: object
+          required: [source_experiment_id, target_experiment_id, relation]
+          properties:
+            source_experiment_id:
+              type: string
+              format: uuid
+            target_experiment_id:
+              type: string
+              format: uuid
+            relation:
+              type: string
+              enum: [supports, contradicts, replicates]
+            note:
+              type: [string, "null"]
+    DeleteSemanticLink:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [linkId]
+          properties:
+            linkId:
+              type: string
+              format: uuid
+    StartRun:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [nodeId, revisionId]
+          properties:
+            nodeId:
+              type: string
+              format: uuid
+            revisionId:
+              type: string
+              format: uuid
+            command:
+              type: [string, "null"]
+              maxLength: 8000
+            seed:
+              type: [integer, "null"]
+            parameters:
+              type: object
+              additionalProperties: true
+            environment:
+              type: object
+              additionalProperties: true
+            startedAt:
+              type: string
+              format: date-time
+    CreateRun:
+      type: object
+      required: [client_run_id, experiment_id, status, started_at, environment]
+      properties:
+        client_run_id:
+          type: string
+          format: uuid
+        experiment_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [running]
+        started_at:
+          type: string
+          format: date-time
+        environment:
+          type: object
+          additionalProperties: true
+    MetricInput:
+      type: object
+      required: [name, value]
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        value:
+          type: number
+        unit:
+          type: [string, "null"]
+          maxLength: 40
+        step:
+          type: [integer, "null"]
+          minimum: 0
+    CompleteRun:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          properties:
+            completedAt:
+              type: string
+              format: date-time
+            exitCode:
+              type: integer
+              minimum: 0
+              maximum: 255
+              default: 0
+            resultManifest:
+              type: object
+              additionalProperties: true
+            metrics:
+              type: array
+              maxItems: 1000
+              items:
+                $ref: "#/components/schemas/MetricInput"
+    CompleteRunRequest:
+      oneOf:
+        - $ref: "#/components/schemas/CompleteRun"
+        - type: object
+          required: [status, ended_at, exit_code, result_manifest]
+          properties:
+            status:
+              type: string
+              enum: [completed]
+            ended_at:
+              type: string
+              format: date-time
+            exit_code:
+              type: integer
+            duration_seconds:
+              type: number
+              minimum: 0
+            result_manifest:
+              type: object
+              additionalProperties: true
+            local_log:
+              type: object
+              additionalProperties: true
+            artifacts:
+              type: array
+              items: {}
+    FailRun:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [errorMessage]
+          properties:
+            completedAt:
+              type: string
+              format: date-time
+            exitCode:
+              type: [integer, "null"]
+              minimum: 1
+              maximum: 255
+            errorCode:
+              type: [string, "null"]
+            errorMessage:
+              type: string
+              minLength: 1
+              maxLength: 4000
+    FailRunRequest:
+      oneOf:
+        - $ref: "#/components/schemas/FailRun"
+        - type: object
+          required: [status, ended_at, exit_code]
+          properties:
+            status:
+              type: string
+              enum: [failed]
+            ended_at:
+              type: string
+              format: date-time
+            exit_code:
+              type: integer
+            failure_kind:
+              type: string
+            error:
+              type: string
+            local_log:
+              type: object
+              additionalProperties: true
+    PrepareArtifact:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [nodeId, fileName, mimeType, sizeBytes, sha256]
+          properties:
+            nodeId:
+              type: string
+              format: uuid
+            runId:
+              type: [string, "null"]
+              format: uuid
+            fileName:
+              type: string
+              minLength: 1
+              maxLength: 180
+            mimeType:
+              type: string
+              enum:
+                - application/json
+                - application/pdf
+                - application/zip
+                - text/csv
+                - text/markdown
+                - text/plain
+                - image/png
+                - image/jpeg
+                - image/webp
+            sizeBytes:
+              type: integer
+              minimum: 1
+              maximum: 10485760
+            sha256:
+              type: string
+              pattern: "^[a-fA-F0-9]{64}$"
+    PrepareCliArtifact:
+      type: object
+      required: [run_id, kind, filename, media_type, size_bytes, sha256]
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          minLength: 1
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 180
+        media_type:
+          type: string
+          minLength: 1
+        size_bytes:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+        sha256:
+          type: string
+          pattern: "^[a-fA-F0-9]{64}$"
+        secret_scan:
+          type: object
+          additionalProperties: true
+    FinalizeArtifact:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [sha256]
+          properties:
+            sha256:
+              type: string
+              pattern: "^[a-fA-F0-9]{64}$"
+    FinalizeArtifactRequest:
+      oneOf:
+        - $ref: "#/components/schemas/FinalizeArtifact"
+        - type: object
+          required: [size_bytes, sha256]
+          properties:
+            size_bytes:
+              type: integer
+              minimum: 1
+              maximum: 10485760
+            sha256:
+              type: string
+              pattern: "^[a-fA-F0-9]{64}$"
+            secret_scan:
+              type: object
+              additionalProperties: true
+    BackupData:
+      type: object
+      required:
+        - workspaces
+        - workspace_members
+        - spaces
+        - nodes
+        - node_revisions
+        - lineage_edges
+        - semantic_links
+        - runs
+        - metric_definitions
+        - metric_observations
+        - code_references
+        - data_references
+        - artifacts
+      additionalProperties: false
+      properties:
+        workspaces:
+          type: array
+          items: { type: object, additionalProperties: true }
+        workspace_members:
+          type: array
+          items: { type: object, additionalProperties: true }
+        spaces:
+          type: array
+          items: { type: object, additionalProperties: true }
+        nodes:
+          type: array
+          items: { type: object, additionalProperties: true }
+        node_revisions:
+          type: array
+          items: { type: object, additionalProperties: true }
+        lineage_edges:
+          type: array
+          items: { type: object, additionalProperties: true }
+        semantic_links:
+          type: array
+          items: { type: object, additionalProperties: true }
+        runs:
+          type: array
+          items: { type: object, additionalProperties: true }
+        metric_definitions:
+          type: array
+          items: { type: object, additionalProperties: true }
+        metric_observations:
+          type: array
+          items: { type: object, additionalProperties: true }
+        code_references:
+          type: array
+          items: { type: object, additionalProperties: true }
+        data_references:
+          type: array
+          items: { type: object, additionalProperties: true }
+        artifacts:
+          type: array
+          items: { type: object, additionalProperties: true }
+    BackupBundle:
+      type: object
+      required: [schemaVersion, exportedAt, workspaceId, checksum, data]
+      properties:
+        schemaVersion:
+          type: string
+          const: "1.0"
+        exportedAt:
+          type: string
+          format: date-time
+        workspaceId:
+          type: string
+          format: uuid
+        checksum:
+          type: string
+          pattern: "^[a-fA-F0-9]{64}$"
+        data:
+          $ref: "#/components/schemas/BackupData"
+    RestoreBundle:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceBody"
+        - type: object
+          required: [bundle]
+          properties:
+            mode:
+              type: string
+              enum: [validate, restore]
+              default: validate
+            bundle:
+              $ref: "#/components/schemas/BackupBundle"
+    RestoreCliBackup:
+      type: object
+      required: [bundle_version, archive_sha256, manifest, records, artifacts]
+      properties:
+        bundle_version:
+          type: string
+        archive_sha256:
+          type: string
+          pattern: "^[a-fA-F0-9]{64}$"
+        manifest:
+          type: object
+          additionalProperties: true
+        records:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              additionalProperties: true
+        artifacts:
+          type: array
+          items:
+            type: object
+            required: [path, size_bytes, sha256, content_base64]
+            properties:
+              path:
+                type: string
+              size_bytes:
+                type: integer
+                minimum: 0
+              sha256:
+                type: string
+                pattern: "^[a-fA-F0-9]{64}$"
+              content_base64:
+                type: string

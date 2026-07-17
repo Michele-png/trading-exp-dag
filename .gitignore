@@ -1,0 +1,31 @@
+# JavaScript
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.py[cod]
+
+# Local services and tooling
+.supabase/
+.vercel/
+.env
+.env.*
+!.env.example
+
+# Runtime output and backups
+.qdag/
+backups/
+*.log
+
+# Operating systems and editors
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,37 @@
+{
+  "name": "trading-exp-dag",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CLI-first experiment provenance registry and DAG explorer.",
+  "workspaces": [
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm --workspace apps/web run dev",
+    "build": "npm --workspace apps/web run build",
+    "lint": "npm --workspace apps/web run lint",
+    "typecheck": "npm --workspace apps/web run typecheck",
+    "test:web": "npm --workspace apps/web run test",
+    "test:cli": "uv run --project packages/cli pytest",
+    "contracts:check": "uv run --project packages/cli python scripts/check_contracts.py",
+    "smoke:api": "uv run --project packages/cli python scripts/smoke_api.py",
+    "test": "npm run contracts:check && npm run test:web && npm run test:cli",
+    "supabase:start": "npx --yes supabase@latest start",
+    "supabase:stop": "npx --yes supabase@latest stop",
+    "supabase:reset": "npx --yes supabase@latest db reset"
+  },
+  "keywords": [
+    "experiments",
+    "provenance",
+    "dag"
+  ],
+  "overrides": {
+    "next@16.2.10": {
+      "postcss": "8.5.16"
+    }
+  },
+  "license": "UNLICENSED"
+}

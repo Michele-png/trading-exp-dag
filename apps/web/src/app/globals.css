@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+:root {
+  --background: #080c14;
+  --foreground: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans:
+    "Inter", "SF Pro Text", "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:
+    "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+}
+
+* {
+  border-color: color-mix(in srgb, white 8%, transparent);
+}
+
+html {
+  color-scheme: dark;
+  background: var(--background);
+}
+
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(
+      circle at 50% -20%,
+      rgba(45, 212, 191, 0.045),
+      transparent 34rem
+    ),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: rgba(94, 234, 212, 0.2);
+  color: white;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(94, 234, 212, 0.8);
+  outline-offset: 2px;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-white/8 bg-[#0e1420];
+  }
+
+  .panel-muted {
+    @apply rounded-xl border border-white/7 bg-white/[0.025];
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-white/9 bg-black/20 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 transition;
+  }
+
+  .field:hover {
+    @apply border-white/15;
+  }
+
+  .field:focus {
+    @apply border-teal-300/40 bg-black/30 outline-none ring-2 ring-teal-300/8;
+  }
+
+  .field:disabled {
+    @apply cursor-not-allowed text-slate-500 opacity-70;
+  }
+
+  .button-primary,
+  .button-secondary,
+  .button-ghost {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3.5 text-sm font-medium transition;
+  }
+
+  .button-primary {
+    @apply bg-teal-300 text-slate-950 shadow-lg shadow-teal-500/5 hover:bg-teal-200;
+  }
+
+  .button-secondary {
+    @apply border border-white/10 bg-white/6 text-slate-200 hover:border-white/16 hover:bg-white/10;
+  }
+
+  .button-ghost {
+    @apply text-slate-400 hover:bg-white/6 hover:text-slate-100;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-300/75;
+  }
+
+  .status-pill {
+    @apply inline-flex w-fit items-center rounded-full border border-white/7 bg-white/4 px-2 py-0.5 text-[10px] font-medium capitalize text-slate-400;
+  }
+}
+
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+.react-flow__controls-button {
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: #111925 !important;
+  fill: #94a3b8 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #182231 !important;
+}
+
+.react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: #0d131f !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
