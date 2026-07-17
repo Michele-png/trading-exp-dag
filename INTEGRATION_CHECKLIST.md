@@ -4,7 +4,7 @@
 
 - [x] Monorepo structure and shared contracts established.
 - [x] Existing Vercel project linked locally.
-- [ ] Source repository remote resolved and connected to Vercel Git deployment.
+- [x] Source repository remote resolved and connected to Vercel Git deployment.
 - [x] No secret or local environment file is tracked.
 
 ## Database
@@ -28,8 +28,8 @@
 
 ## Deployment
 
-- [ ] Preview points to staging Supabase.
+- [x] Preview points to staging Supabase.
 - [ ] Production uses a separate Supabase project.
 - [x] Vercel server secrets are configured and not client-visible.
-- [ ] Supabase Auth redirect URLs match deployed environments.
+- [x] Supabase Auth redirect URLs match deployed environments.
 - [ ] Production smoke test passes before canonical experiment history is used.

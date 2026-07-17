@@ -30,9 +30,12 @@ The existing Vercel project is `trading-exp-dag`. Configure its monorepo root
 directory as `apps/web`, retain GitHub preview deployments, and use Node.js 24
 or a compatible supported release.
 
-The implementation repository was not visible through the authenticated GitHub
-account during preflight. Resolve and link its actual remote before the first
-Git-based production deployment; do not create a second Vercel project.
+QDAG enforces access with Supabase sessions and scoped personal API tokens.
+Do not enable Vercel Authentication on deployments used by the CLI because it
+intercepts requests before QDAG can validate the personal token.
+
+The source repository is `Michele-png/trading-exp-dag` and is connected to this
+Vercel project for Git-based deployments. Do not create a second Vercel project.
 
 ## Free-tier durability
 
